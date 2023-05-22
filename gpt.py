@@ -1,6 +1,10 @@
+import glob
+import os
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import sentencepiece as spm
 
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
@@ -8,12 +12,13 @@ block_size = 256 # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 3e-4
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 eval_iters = 200
 n_embd = 384
 n_head = 6
 n_layer = 6
 dropout = 0.2
+vocab_size = 2000
 # ------------
 
 torch.manual_seed(1337)
@@ -22,14 +27,14 @@ torch.manual_seed(1337)
 with open('input.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
-# here are all the unique characters that occur in this text
-chars = sorted(list(set(text)))
-vocab_size = len(chars)
 # create a mapping from characters to integers
-stoi = { ch:i for i,ch in enumerate(chars) }
-itos = { i:ch for i,ch in enumerate(chars) }
-encode = lambda s: [stoi[c] for c in s] # encoder: take a string, output a list of integers
-decode = lambda l: ''.join([itos[i] for i in l]) # decoder: take a list of integers, output a string
+os.makedirs('./models', exist_ok=True)
+if not os.path.isfile('./models/tokenizer.model'):
+    spm.SentencePieceTrainer.Train(f"--input=input.txt --model_prefix=./models/tokenizer --vocab_size={vocab_size} --split_by_whitespace=True")
+sp = spm.SentencePieceProcessor()
+sp.load("./models/tokenizer.model")
+encode = lambda s: sp.encode_as_ids(s)  # encoder: take a string, output a list of integers
+decode = lambda l: sp.decode_ids(l)  # decoder: take a list of integers, output a string
 
 # Train and test splits
 data = torch.tensor(encode(text), dtype=torch.long)
@@ -203,12 +208,51 @@ print(sum(p.numel() for p in m.parameters())/1e6, 'M parameters')
 # create a PyTorch optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-for iter in range(max_iters):
+# Model saving function
+def save_checkpoint(model, optimizer, filename):
+    torch.save({
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, filename)
+
+# Model loading function
+def load_checkpoint(model, optimizer, directory):
+    # Find the most recent checkpoint in directory
+    list_of_files = glob.glob(f'{directory}/*.pt') 
+    if not list_of_files:  # If no checkpoints
+        return None
+    latest_file = max(list_of_files, key=os.path.getctime)
+
+    print(f'Loading checkpoint: {latest_file}')
+    
+    checkpoint = torch.load(latest_file)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    return latest_file
+
+# specify the directory where the checkpoint files are saved
+checkpoint_directory = "./models"
+
+latest_checkpoint = load_checkpoint(model, optimizer, checkpoint_directory)
+if latest_checkpoint is not None:
+    start_iter = int(latest_checkpoint.split('_')[-1].split('.')[0]) + 1
+else:
+    start_iter = 0
+
+for iter in range(start_iter, max_iters):
 
     # every once in a while evaluate the loss on train and val sets
     if iter % eval_interval == 0 or iter == max_iters - 1:
         losses = estimate_loss()
         print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+
+        # Save the model and optimizer states
+        save_checkpoint(model, optimizer, f"{checkpoint_directory}/checkpoint_iter_{iter}.pt")
+
+        # Print a sample output for inspection
+        context = torch.zeros((1, 1), dtype=torch.long, device=device)
+        print("Sample output:\n")
+        print(decode(model.generate(context, max_new_tokens=500)[0].tolist()))
 
     # sample a batch of data
     xb, yb = get_batch('train')
