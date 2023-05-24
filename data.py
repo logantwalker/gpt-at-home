@@ -59,7 +59,7 @@ def main():
                     plaintext = re.sub("[ \t]*\n+[ \t]*", "\n", plaintext).strip()
                     plaintext = "\n".join([line for line in plaintext.split("\n") if len(line) >= 80])
                     if plaintext:
-                        with open(f"input.txt", "a+") as outfile:
+                        with open(f"{lang}wiki.txt", "a+") as outfile:
                             outfile.write(f"{plaintext}\n")
 
 if __name__ == "__main__":
