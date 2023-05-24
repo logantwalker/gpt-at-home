@@ -14,7 +14,7 @@ def get_wikidump(lang):
         print("Downloading file...")
         url = f"https://dumps.wikimedia.org/{lang}wiki/latest/{lang}wiki-latest-pages-articles.xml.bz2"
         response = requests.get(url)
-        with open(filename, 'wb') as output_file:
+        with open(compressed_filename, 'wb') as output_file:
             output_file.write(response.content)
         print("File downloaded successfully.")
     else:
