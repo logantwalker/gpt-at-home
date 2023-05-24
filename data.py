@@ -1,40 +1,66 @@
-import os
 import re
-import time
+import os
+from urllib.request import urlopen
+import bz2
 
 import requests
+import mwxml
+import mwparserfromhell
 
-visited_pages_file = "visited_pages.txt"
-visited_pages = set()
-if os.path.exists(visited_pages_file):
-    with open(visited_pages_file, "r") as f:
-        visited_pages = set(int(line.strip()) for line in f)
-while True:
-    start_time_outer = time.time()
-    try:
-        random_articles = requests.get("https://simple.wikipedia.org/w/api.php?action=query&format=json&list=random&rnnamespace=0&rnlimit=500").json()
-        for article in random_articles["query"]["random"]:
-            if article["id"] in visited_pages:
-                continue
-            visited_pages.add(article["id"])
-            start_time_inner = time.time()
-            try:
-                page_content = requests.get(f"https://simple.wikipedia.org/w/api.php?action=query&format=json&titles={article['title']}&prop=extracts&explaintext").json()
-                page_text = list(page_content["query"]["pages"].values())[0]["extract"]
-                page_text = re.sub(r"==[^=]+?==", "\n", page_text)
-                page_text = page_text.replace("\\n", "\n")
-                page_text = re.sub(r"\n+", "\n", page_text).strip()
-                with open("input.txt", "a+", encoding="utf-8") as f:
-                    for line in page_text.split("\n"):
-                        if len(line) >= 80:
-                            f.write(f"{line}\n")
-                with open(visited_pages_file, "a+") as f:
-                    f.write(str(article["id"]) + "\n")
-            except Exception as e:
-                print(f"Error occurred with page {article['title']}: {e}")
-            sleep_time_inner = max(3 - (time.time() - start_time_inner), 0)
-            time.sleep(sleep_time_inner)
-    except Exception as e:
-        print(f"Error occurred fetching random articles: {e}")
-    sleep_time_outer = max(3 - (time.time() - start_time_outer), 0)
-    time.sleep(sleep_time_outer)
+def get_wikidump(lang):
+
+    compressed_filename = f"{lang}wiki-latest-pages-articles.xml.bz2"
+    if not os.path.exists(compressed_filename):
+        print("Downloading file...")
+        url = f"https://dumps.wikimedia.org/{lang}wiki/latest/{lang}wiki-latest-pages-articles.xml.bz2"
+        response = requests.get(url)
+        with open(filename, 'wb') as output_file:
+            output_file.write(response.content)
+        print("File downloaded successfully.")
+    else:
+        print("File already exists.")
+
+    decompressed_filename = f"{lang}wiki-latest-pages-articles.xml"
+    if not os.path.exists(decompressed_filename):
+        print("Decompressing file...")
+        with bz2.BZ2File(compressed_filename, 'rb') as f_in, open(decompressed_filename, 'wb') as f_out:
+            for data in iter(lambda : f_in.read(100 * 1024), b''):
+                f_out.write(data)
+        print("File decompressed successfully.")
+    else:
+        print("Decompressed file already exists.")
+
+
+def main():
+    lang = "simple"
+    get_wikidump(lang)
+    with open(f"{lang}wiki-latest-pages-articles.xml") as file:
+        dump = mwxml.Dump.from_file(file)
+        for page in dump:
+            print(f"Parsing {page.title}...")
+            for revision in page:
+                text = revision.text
+                if text is not None:
+                    wikicode = mwparserfromhell.parse(text)
+                    for template in wikicode.filter_templates():
+                        try:
+                            wikicode.remove(template)
+                        except ValueError:
+                            pass
+                    for link in wikicode.filter_wikilinks():
+                        if link.title.strip_code().startswith('File:'):
+                            try:
+                                wikicode.remove(link)
+                            except ValueError:
+                                pass
+                    for heading in wikicode.filter_headings():
+                        wikicode.remove(heading)
+                    plaintext = wikicode.strip_code()
+                    plaintext = re.sub("[ \t]*\n+[ \t]*", "\n", plaintext).strip()
+                    plaintext = "\n".join([line for line in plaintext.split("\n") if len(line) >= 80])
+                    if plaintext:
+                        with open(f"input.txt", "a+") as outfile:
+                            outfile.write(f"{plaintext}\n")
+
+if __name__ == "__main__":
+    main()
