@@ -8,7 +8,7 @@ import sentencepiece as spm
 
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
-block_size = 256 # what is the maximum context length for predictions?
+block_size = 64 # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 6e-4
