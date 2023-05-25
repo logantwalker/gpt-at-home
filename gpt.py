@@ -307,7 +307,8 @@ for iter in range(start_iter, max_iters):
 
     # sample a batch of data
     try:
-        xb, yb = next(train_dataset_iter)
+       batch = next(train_dataloader)
+       print(batch)
     except StopIteration:
         # reshuffle and restart the iterator if we've reached the end of the dataset
         train_dataset_iter = iter(train_dataloader)
