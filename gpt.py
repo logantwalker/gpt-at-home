@@ -18,7 +18,7 @@ n_embd = 768
 n_head = 12
 n_layer = 12
 dropout = 0.0
-vocab_size = 16000
+vocab_size = 2000
 # ------------
 
 torch.manual_seed(1337)
