@@ -90,11 +90,13 @@ def get_batch(dataset, block_size, batch_size, device):
 def estimate_loss():
     out = {}
     model.eval()
-    for split, dataset in [("train", train_dataset), ("val", val_dataset)]:
-        dataset_iter = iter(dataset)
+    for split, dataloader in [("train", train_dataloader), ("val", val_dataloader)]:
         losses = torch.zeros(eval_iters, device=device)
-        for k in range(eval_iters):
-            X, Y = get_batch(dataset_iter, block_size, batch_size, device)
+        for k, (X, Y) in enumerate(dataloader):
+            if k >= eval_iters:
+                break
+            X = X.to(device)
+            Y = Y.to(device)
             logits, loss = model(X, Y)
             losses[k] = loss.item()
         out[split] = losses.mean().item()
@@ -287,6 +289,7 @@ if latest_checkpoint is not None:
 else:
     start_iter = 0
 
+train_dataset_iter = iter(train_dataloader)
 for iter in range(start_iter, max_iters):
 
     # every once in a while evaluate the loss on train and val sets
@@ -303,8 +306,15 @@ for iter in range(start_iter, max_iters):
         print(decode(model.generate(context, max_new_tokens=500)[0].tolist()))
 
     # sample a batch of data
-    # xb, yb = get_batch('train')
-    xb, yb = get_batch(iter(train_dataset), block_size, batch_size, device)
+    try:
+        xb, yb = next(train_dataset_iter)
+    except StopIteration:
+        # reshuffle and restart the iterator if we've reached the end of the dataset
+        train_dataset_iter = iter(train_dataloader)
+        xb, yb = next(train_dataset_iter)
+
+    xb = xb.to(device)
+    yb = yb.to(device)
 
     # evaluate the loss
     logits, loss = model(xb, yb)
