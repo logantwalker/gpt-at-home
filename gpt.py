@@ -252,7 +252,7 @@ for iter in range(start_iter, max_iters):
         # Print a sample output for inspection
         context = torch.zeros((1, 1), dtype=torch.long, device=device)
         print("Sample output:\n")
-        print(decode(model.generate(context, max_new_tokens=500)[0].tolist()))
+        print(decode(model.generate(context, max_new_tokens=50)[0].tolist()))
 
     # sample a batch of data
     xb, yb = get_batch('train')
