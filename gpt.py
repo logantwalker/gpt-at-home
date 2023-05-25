@@ -304,7 +304,7 @@ for iter in range(start_iter, max_iters):
 
     # sample a batch of data
     # xb, yb = get_batch('train')
-    train_iter = iter(train_dataloader)
+    train_iter = iter(train_dataset)
     xb, yb = get_batch(train_iter, block_size, batch_size, device)
 
     # evaluate the loss
