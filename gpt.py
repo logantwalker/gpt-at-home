@@ -303,7 +303,9 @@ for iter in range(start_iter, max_iters):
         print(decode(model.generate(context, max_new_tokens=500)[0].tolist()))
 
     # sample a batch of data
-    xb, yb = get_batch('train')
+    # xb, yb = get_batch('train')
+    train_iter = iter(train_dataloader)
+    xb, yb = get_batch(train_iter, block_size, batch_size, device)
 
     # evaluate the loss
     logits, loss = model(xb, yb)
