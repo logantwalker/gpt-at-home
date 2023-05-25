@@ -24,13 +24,13 @@ vocab_size = 2000
 torch.manual_seed(1337)
 
 # wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
-with open('input.txt', 'r', encoding='utf-8') as f:
+with open('clickbait_data.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
 # create a mapping from characters to integers
 os.makedirs('./models', exist_ok=True)
 if not os.path.isfile('./models/tokenizer.model'):
-    spm.SentencePieceTrainer.Train(f"--input=input.txt --model_prefix=./models/tokenizer --vocab_size={vocab_size} --split_by_whitespace=True")
+    spm.SentencePieceTrainer.Train(f"--input=clickbait_data.txt --model_prefix=./models/tokenizer --vocab_size={vocab_size} --split_by_whitespace=True")
 sp = spm.SentencePieceProcessor()
 sp.load("./models/tokenizer.model")
 encode = lambda s: sp.encode_as_ids(s)  # encoder: take a string, output a list of integers
