@@ -6,19 +6,22 @@ import torch.nn as nn
 from torch.nn import functional as F
 import sentencepiece as spm
 
+print(torch.version.cuda)
+print(torch.cuda.is_available())
+
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
-block_size = 64 # what is the maximum context length for predictions?
+block_size = 59 # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
-learning_rate = 6e-4
+learning_rate = 3e-5
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 eval_iters = 200
 n_embd = 768
 n_head = 12
 n_layer = 12
-dropout = 0.0
-vocab_size = 2000
+dropout = 0.5
+vocab_size = 8000
 # ------------
 
 torch.manual_seed(1337)
@@ -26,6 +29,7 @@ torch.manual_seed(1337)
 # wget https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt
 with open('clickbait_data.txt', 'r', encoding='utf-8') as f:
     text = f.read()
+
 
 # create a mapping from characters to integers
 os.makedirs('./models', exist_ok=True)
@@ -266,4 +270,4 @@ for iter in range(start_iter, max_iters):
 # generate from the model
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=15)[0].tolist()))
-#open('more.txt', 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
+open('more.txt', 'w').write(decode(m.generate(context, max_new_tokens=10000)[0].tolist()))
