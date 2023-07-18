@@ -12,9 +12,9 @@ print(torch.cuda.is_available())
 # hyperparameters
 batch_size = 64 # how many independent sequences will we process in parallel?
 block_size = 59 # what is the maximum context length for predictions?
-max_iters = 5000
+max_iters = 10000
 eval_interval = 500
-learning_rate = 3e-5
+learning_rate = 4e-5
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 eval_iters = 200
 n_embd = 768
